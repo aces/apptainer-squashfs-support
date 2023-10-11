@@ -1,37 +1,41 @@
 
-# SquashFS through Singularity : Hints And Tips
+# SquashFS through Apptainer : Hints And Tips
 
 This repository contains code, examples, hints and other documentation
-related to using singularity containers as access methods to overlay
+related to using Apptainer containers as access methods to overlay
 files (typically, squashfs files).
 
 The data organization addressed here generally consists of
 
 1. Having one or several `.squashfs` files that contain the data;
-2. Having a singularity container image with specific capabilities (`rsync`, `openssh` etc);
+2. Having an Apptainer container image with specific capabilities (`rsync`, `openssh` etc);
 3. Combining the two, along with other scripts, to build a system that can seemlessly access the data files.
 
-## What this repo contains
+## What this repository contains
 
 * The directory `build_data` contains code and instructions to make squashfs files;
-* The directory `build_simg` contains code and instructions to build a singularity container;
-* The directory `bin` contain some utility scripts (e.g. `sing_sftpd`);
+* The directory `build_simg` contains code and instructions to build an Apptainer container;
+* The directory `bin` contain some utility scripts (e.g. `apptainer_sftpd`);
 * The directory `doc_examples` contains sample README files to install with your data, for helping users access it;
-* The directory `images` contains a PDF of technical diagrams, and its source in OmniGraffle format;
+* The directory `images` contains a PDF with technical diagrams, and its source in OmniGraffle format;
 * The rest of this README here contains hints and code snippets on accessing the data files.
+
+Note: this repository is a newer version of [sing-squashfs-support](https://github.com/aces/sing-squashfs-support)
+with the nomenclature adjusted to refer to `Apptainer` instead of `Singularity`, and better
+support for files with extensions `.sqfs`.
 
 ## Accessing the data files
 
 For the examples below, let's assume we have a data distribution
 directory called `/data/HCPsquash` containing two SquashFS filesystem
-files, and a singularity container image file:
+files, and an Apptainer container image file:
 
 ```bash
 unix% ls -l /data/HCPsquash
 total 83068518941
 -rw-r--r-- 1 prioux rpp-aevans-ab 1508677619712 Aug  1 16:13 hcp1200-00-100206-103414.squashfs
 -rw-r--r-- 1 prioux rpp-aevans-ab 1532533477376 Aug  1 20:33 hcp1200-01-103515-108020.squashfs
--rwxr-xr-x 1 prioux rpp-aevans-ab     147062784 Dec  3 16:51 sing_squashfs.simg
+-rwxr-xr-x 1 prioux rpp-aevans-ab     147062784 Dec  3 16:51 apptainer_squashfs.sif
 ```
 
 (This example is taken as a subset of a real dataset, and more
@@ -44,7 +48,7 @@ the root path `/HCP_1200_data`. The first file contains 20
 subdirectories named `100206` ... `103414`, and the second file
 contains 20 subdirectories named `103515` ... `108020`.
 
-**Important note:** Singularity versions 3.5.0 to 3.5.2 are known to
+**Important note:** Some versions of Apptainer are known to
 require a suffix consisting of the three characters `:ro` after the
 names of the overlays; the commands below would, for instance,
 require all overlay options to be in the form of `--overlay=abc.squashfs:ro` .
@@ -56,7 +60,7 @@ squashfs file mounted:
 
 ```bash
 cd /data/HCPsquash
-singularity shell --overlay=hcp1200-00-100206-103414.squashfs sing_squashfs.simg
+apptainer shell --overlay=hcp1200-00-100206-103414.squashfs apptainer_squashfs.sif
 ```
 
 You can then `cd /HCP_1200_data` and `ls` the files. Use `exit` to
@@ -65,7 +69,7 @@ exit the container!
 To get both squashfs files:
 
 ```bash
-singularity shell --overlay=hcp1200-00-100206-103414.squashfs --overlay=hcp1200-01-103515-108020.squashfs sing_squashfs.simg
+apptainer shell --overlay=hcp1200-00-100206-103414.squashfs --overlay=hcp1200-01-103515-108020.squashfs apptainer_squashfs.sif
 ```
 
 Now you can notice that the content of `/HCP_1200_data` has 40
@@ -74,23 +78,23 @@ subdirectories instead of just 20.
 To connect with all .squashfs file, no matter how many:
 
 ```bash
-singularity shell $(ls -1 | grep '\.squashfs$' | sed -e 's/^/--overlay /') sing_squashfs.simg
+apptainer shell $(ls -1 | grep '\.squashfs$' | sed -e 's/^/--overlay /') apptainer_squashfs.sif
 ```
 
 To disable the messages about the squashfs not being a writable
-filesystem, use the `-s` option of singularity:
+filesystem, use the `-s` option of Apptainer:
 
 ```bash
-singularity -s shell ...
+apptainer -s shell ...
 ```
 
 ### b) Running a command (low-level, directly)
 
-This is just like in a) above, but instead of running `singularity shell`
-we run `singularity exec`:
+This is just like in a) above, but instead of running `apptainer shell`
+we run `apptainer exec`:
 
 ```bash
-singularity -s exec --overlay=hcp1200-00-100206-103414.squashfs sing_squashfs.simg ls -l /HCP_1200_data
+apptainer -s exec --overlay=hcp1200-00-100206-103414.squashfs apptainer_squashfs.sif ls -l /HCP_1200_data
 ```
 
 ### c) Running a command or a shell (with utility wrapper)
@@ -98,35 +102,35 @@ singularity -s exec --overlay=hcp1200-00-100206-103414.squashfs sing_squashfs.si
 In the [bin](bin) directory of this repo, you will find a set of
 utility wrapper scripts. In fact, it's a single script with multiple
 names. It has many features and options allowing you to choose which
-squashfs files to access and which singularity image file to run,
-but the simplest use scenario is to copy the one called `sing_command_here`
+squashfs files to access and which Apptainer image file to run,
+but the simplest use scenario is to copy the one called `apptainer_command_here`
 into the same directory `/data/HCPsquash` as the squashfs files and
-singularity image:
+Apptainer image:
 
 ```
 unix% ls -l /data/HCPsquash
 total 83068518941
 -rw-r--r-- 1 prioux rpp-aevans-ab 1508677619712 Aug  1 16:13 hcp1200-00-100206-103414.squashfs
 -rw-r--r-- 1 prioux rpp-aevans-ab 1532533477376 Aug  1 20:33 hcp1200-01-103515-108020.squashfs
--rwxr-xr-x 3 prioux rpp-aevans-ab          7542 Dec  3 16:57 sing_command_here
--rwxr-xr-x 1 prioux rpp-aevans-ab     147062784 Dec  3 16:51 sing_squashfs.simg
+-rwxr-xr-x 3 prioux rpp-aevans-ab          7542 Dec  3 16:57 apptainer_command_here
+-rwxr-xr-x 1 prioux rpp-aevans-ab     147062784 Dec  3 16:51 apptainer_squashfs.sif
 ```
 
 When invoked, it will automatically detect those files around it,
-and run a `singularity exec` command with all the appropriate
+and run a `apptainer exec` command with all the appropriate
 overlays. Now you can run the same command as in example b) above,
 but in a simpler way:
 
 ```bash
 # Run on all squashfs files:
-./sing_command_here ls -l /HCP_1200_data
+./apptainer_command_here ls -l /HCP_1200_data
 
 # Run on just one squashfs file:
-./sing_command_here -O hcp1200-00-100206-103414.squashfs ls -l /HCP_1200_data
+./apptainer_command_here -O hcp1200-00-100206-103414.squashfs ls -l /HCP_1200_data
 
 # Connect interactively:
-./sing_shell_here -O hcp1200-00-100206-103414.squashfs # with one data file
-./sing_shell_here                                      # with all files
+./apptainer_shell_here -O hcp1200-00-100206-103414.squashfs # with one data file
+./apptainer_shell_here                                      # with all files
 ```
 
 ### d) Mounting the data files using sshfs
@@ -169,7 +173,7 @@ mkdir mymountpoint
 
 # See how complicated the sftp_server command is, and we're
 # using just ONE of the overlays too!
-sshfs -o sftp_server="singularity -s exec --overlay=/data/HCPsquash/hcp1200-00-100206-103414.squashfs /data/HCPsquash/sing_squashfs.simg /usr/libexec/openssh/sftp-server" user@computer2:/HCP_1200_data mymountpoint
+sshfs -o sftp_server="apptainer -s exec --overlay=/data/HCPsquash/hcp1200-00-100206-103414.squashfs /data/HCPsquash/apptainer_squashfs.sif /usr/libexec/openssh/sftp-server" user@computer2:/HCP_1200_data mymountpoint
 
 ls mymountpoint
 fusermount -u mymountpoint
@@ -190,10 +194,10 @@ that long command into a separate bash script. Let's call it
 
 # Content of example1.sh
 
-singularity -s exec \
+apptainer -s exec \
   --overlay=/data/HCPsquash/hcp1200-00-100206-103414.squashfs \
   --overlay=/data/HCPsquash/hcp1200-01-103515-108020.squashfs \
-  /data/HCPsquash/sing_squashfs.simg                          \
+  /data/HCPsquash/apptainer_squashfs.sif                          \
   /usr/libexec/openssh/sftp-server
 ```
 
@@ -207,20 +211,20 @@ We can have another look at this solution in [Diagram #3](images/diag_03_SSHFS_S
 and [Diagram #4](images/diag_04_SSHFS_SINGSFTPD.png).
 
 This will work fine as long as the content of `example1.sh` is
-updated appropriately whenever the singularity container is changed,
+updated appropriately whenever the Apptainer container is changed,
 or the set of overlays are changed.
 
 A better solution would be to create a new shell wrapper that
 works like `example1.sh` but in a more generic way. The [bin](bin)
-directory in this repo contains such programs, `sing_sftpd` and
-`sing_sftpd_here`.  They come with full documentation, just run
-them with the `-h` option. But in essence, installing `sing_sftpd_here`
+directory in this repo contains such programs, `apptainer_sftpd` and
+`apptainer_sftpd_here`.  They come with full documentation, just run
+them with the `-h` option. But in essence, installing `apptainer_sftpd_here`
 in the `/data/HCPsquash` directory will make it automatically detect
-all the `.squashfs` and the `.simg` file there, and allow you to
+all the `.squashfs` and the `.sif` file there, and allow you to
 mount the data files with:
 
 ```bash
-sshfs -o sftp_server="/data/HCPsquash/sing_sftpd_here" user@computer2:/HCP_1200_data mymountpoint
+sshfs -o sftp_server="/data/HCPsquash/apptainer_sftpd_here" user@computer2:/HCP_1200_data mymountpoint
 ```
 
 ### e) Copying the data files using scp
@@ -230,13 +234,13 @@ server-side program with an alternative SFTP server. The option
 is in fact exactly the same:
 
 ```bash
-scp -o sftp_server="singularity -s exec --overlay=/data/HCPsquash/hcp1200-00-100206-103414.squashfs /data/HCPsquash/sing_squashfs.simg /usr/libexec/openssh/sftp-server" user@computer2:/HCP_1200_data/remote_file.txt localfile.txt
+scp -o sftp_server="apptainer -s exec --overlay=/data/HCPsquash/hcp1200-00-100206-103414.squashfs /data/HCPsquash/apptainer_squashfs.sif /usr/libexec/openssh/sftp-server" user@computer2:/HCP_1200_data/remote_file.txt localfile.txt
 ```
 
 or more simply using the same type of wrapper described for sshfs:
 
 ```bash
-scp -o sftp_server="/data/HCPsquash/sing_sftpd_here" user@computer2:/HCP_1200_data/remote_file.txt localfile.txt
+scp -o sftp_server="/data/HCPsquash/apptainer_sftpd_here" user@computer2:/HCP_1200_data/remote_file.txt localfile.txt
 ```
 
 ### f) Extracting data using rsync
@@ -259,10 +263,10 @@ wrapper `example2.sh`:
 
 # Content of example2.sh
 
-singularity -s exec \
+apptainer -s exec \
   --overlay=/data/HCPsquash/hcp1200-00-100206-103414.squashfs \
   --overlay=/data/HCPsquash/hcp1200-01-103515-108020.squashfs \
-  /data/HCPsquash/sing_squashfs.simg                          \
+  /data/HCPsquash/apptainer_squashfs.sif                          \
   rsync "$@"
 ```
 
@@ -277,11 +281,11 @@ This solution is shown in [Diagram #6](images/diag_06_RSYNC_Setup.png)
 and [Diagram #7](images/diag_07_RSYNC_SINGRSYNC.png).
 
 Again, a more general solution is provided in the [bin](bin) directory
-of this repo, where you can find two utilities named `sing_rsync`
-and `sing_rsync_here`. These can be deployed alongside the `.squashfs`
-filesystem files and the singularity image to make the process of
-recognizing them and booting the singularity container transparent.
-Running `sing_rsync` with the `-h` option will provide more
+of this repo, where you can find two utilities named `apptainer_rsync`
+and `apptainer_rsync_here`. These can be deployed alongside the `.squashfs`
+filesystem files and the Apptainer image to make the process of
+recognizing them and booting the Apptainer container transparent.
+Running `apptainer_rsync` with the `-h` option will provide more
 information about these utilties.
 
 ## Other tricks and tips
@@ -292,17 +296,17 @@ Files in `.squashfs` format encode *read-only* filesystems. They
 are perfect for large static datasets, as they are very fast and
 reduce tremendously the inode requirements on the host filesystem.
 
-While a process is running inside a singularity container, that
+While a process is running inside an Apptainer container, that
 process can write files only on externally mounted writable
-filesystems; singularity normally provides /tmp and the $HOME
-directory of the user who runs the singularity command. Other mount
-point can be provided by adding explicit `-B` options to the singularity
+filesystems; Apptainer normally provides /tmp and the $HOME
+directory of the user who runs the apptainer command. Other mount
+point can be provided by adding explicit `-B` options to the apptainer
 command line too.
 
-The utility programs included in [bin](bin) will launch singularity
+The utility programs included in [bin](bin) will launch Apptainer
 containers with not only all the `.squashfs` that they can find,
 but also any file with a `.ext3` extension. These can be built as
-formatted EXT3 filesystem and singularity will make them writable.
+formatted EXT3 filesystem and apptainer will make them writable.
 For more information about building such files, consult the repo
 for the utility [withoverlay](https://github.com/prioux/withoverlay).
 

@@ -3,24 +3,32 @@
 # By Pierre Rioux, pierre.rioux@mcgill.ca,
 # November 2019, December 2019, January 2020
 #
-# See https://github.com/aces/sing-squashfs-support
+# October 2023:
+# Originally developed with 'singularity' as the
+# container engine, this current version use
+# 'apptainer' instead.
+#
+# See https://github.com/aces/apptainer-squashfs-support
 #
 # The site above gives examples on how to invoke this script as a wrapper for
 #
 # a) mounting squashfs files using sshfs;
 # b) running rsync inside a container with squashfs files;
 # c) running any other command too while we're at it.
+# d) starting an interactive shell
 #
 # This program has many capabilities that are triggered
 # automatically by how it is NAMED at installation. If it
 # is called any of these names, some default behaviors will
 # be triggered:
 #
-#  sing_sftpd   # passthrough container command: sftp-server
-#  sing_rsync   # passthrough container command: rsync
-#  sing_command_here # default sqfs and image: in install dir
-#  sing_sftpd_here   # default sqfs and image: in install dir
-#  sing_rsync_here   # default sqfs and image: in install dir
+#  apptainer_sftpd   # passthrough container command: sftp-server
+#  apptainer_rsync   # passthrough container command: rsync
+#  apptainer_shell   # interactive shell
+#  apptainer_command_here # default sqfs and image: in install dir
+#  apptainer_sftpd_here   # default sqfs and image: in install dir
+#  apptainer_rsync_here   # default sqfs and image: in install dir
+#  apptainer_shell_here   # default sqfs and image: in install dir
 
 VERSION="3.0"
 BASENAME=$(basename $0)
@@ -35,7 +43,7 @@ PREFIX="" # -D option
 #   echo "inspecting prefix=$PREFIX" > /tmp/deb.1
 #
 # You can also add 'echo' in front of the final
-# singularity command to inspect it, as a way
+# apptainer command to inspect it, as a way
 # to inspect its final form.
 
 # Why oh why is this not at the same place?
@@ -44,9 +52,9 @@ RPM_OPEN_SSH_SFTPD="/usr/libexec/openssh/sftp-server" # Centos location
 APT_OPEN_SSH_SFTPD="/usr/lib/sftp-server"             # Ubuntu location
 
 # Some build-in commands we support by default:
-# For sing_sftpd : (automatically supports the two paths above too)
+# For apptainer_sftpd : (automatically supports the two paths above too)
 SFTPD_COMMAND="\$(type -p $RPM_OPEN_SSH_SFTPD || type -p $APT_OPEN_SSH_SFTPD)"
-# For sing_rsync :
+# For apptainer_rsync :
 RSYNC_COMMAND="rsync" # hopefully it's in the search path in the container
 
 # Documentation and usage statement
@@ -54,11 +62,11 @@ function usage() {
   cat <<USAGE 1>&2
 This is $BASENAME $VERSION by Pierre Rioux
 
-It will run a command in a singularity container that has been started
+It will run a command in a apptainer container that has been started
 with a set of overlays. By default, depending on the name of this
 program, it will run the OpenSSH 'sftp-server', or the 'rsync' command.
 
-Usage: $BASENAME [-D directory] [-I singularity_image_file] [-O overlay_file_pattern] [command...]
+Usage: $BASENAME [-D directory] [-I apptainer_image_file] [-O overlay_file_pattern] [command...]
 
 Note: options must be provided in the order shown!
 
@@ -66,23 +74,23 @@ where:
 
   -D directory
 
-    is an optional base directory for finding both singulariy_image_file
+    is an optional base directory for finding both apptainer_image_file
     and overlay_file_pattern. If provided, the program will chdir there
     first before attempting to resolve the other arguments.
 
     If a directory is given and no other arguments are provided
-    (that is, no singularity_image_file and no overlay_file_pattern),
+    (that is, no apptainer_image_file and no overlay_file_pattern),
     then the program will pick the first file named "*.simg" (or
-    "*.sif") in the directory as its singularity image file, and
-    will pick all files ending in .squashfs, .sqs or .ext3 as the
-    overlays.
+    "*.sif") in the directory as its apptainer image file, and
+    will pick all files ending in .squashfs, .sqs, .sqfs, or .ext3
+    as the overlays.
 
-  -I singularity_image_file
+  -I apptainer_image_file
 
-    is a path to a singularity container image. The image must contain at
-    least the openssh-server package (when running sing_sftpd) or the rsync
-    package (when running sing_rsync). It can be a relative or absolute
-    path. See also -D above.
+    is a path to an apptainer container image. The image must contain
+    at least the openssh-server package (when running apptainer_sftpd)
+    or the rsync package (when running apptainer_rsync). It can be
+    a relative or absolute path. See also -D above.
 
   -O overlay_file_pattern
 
@@ -94,10 +102,10 @@ where:
     an optional command to run in the container. By default the command
     to run depends on the name of this very program:
 
-    When the program is named 'sing_sftpd':
+    When the program is named 'apptainer_sftpd':
       The command will be $RPM_OPEN_SSH_SFTPD or $APT_OPEN_SSH_SFTPD
       (whichever is first found). This is the OpenSSH sftp-server.
-    When the program is named 'sing_rsync':
+    When the program is named 'apptainer_rsync':
       The command will be '$RSYNC_COMMAND'.
 
 Installation shortcut:
@@ -107,27 +115,27 @@ Installation shortcut:
   assume that a '-D' option was provided with the path to the directory
   where the script is installed as argument. E.g.
 
-     /path/to/sing_sftpd_here
+     /path/to/apptainer_sftpd_here
 
   is the same as
 
-     /path/to/sing_sftpd -D /path/to
+     /path/to/apptainer_sftpd -D /path/to
 
 Examples:
 
  # Overlays are given with a pattern:
- sing_sftpd -I centos.simg -O '*.squashfs'
+ apptainer_sftpd -I centos.simg -O '*.squashfs'
 
  # Using a -D to specify where to look for all the files:
- sing_rsync -D /my/path -I centos.simg -O '*.squashfs' rsync_args_here
+ apptainer_rsync -D /my/path -I centos.simg -O '*.squashfs' rsync_args_here
 
  # Using a -D to specify where to look just for the overlays:
- sing_sftpd -D /my/path -I /some/other/place/centos.simg -O '*.squashfs'
+ apptainer_sftpd -D /my/path -I /some/other/place/centos.simg -O '*.squashfs'
 
  # Using a -D and no other arguments:
- # a) singularity image will be first .simg (or .sif)
+ # a) apptainer image will be first .simg (or .sif)
  # b) overlays will be all .squashfs, .sqs or .ext3 files
- sing_sftpd -D /my/path/for/everything
+ apptainer_sftpd -D /my/path/for/everything
 
 USAGE
   exit 2
@@ -161,10 +169,10 @@ if test "X$1" = "X-D" ; then
   fi
 fi
 
-# Option -I: the path of the singularity image
+# Option -I: the path of the apptainer image
 if test "X$1" = "X-I" ; then
   test $# -lt 2 && usage
-  SING_IMAGE="$2" # can be empty string if -D provided
+  APPT_IMAGE="$2" # can be empty string if -D provided
   shift ; shift
 fi
 
@@ -183,9 +191,9 @@ if test -n "$PREFIX" ; then
   cd "$PREFIX" || exit 2
 
   # Auto find image
-  if test -z "$SING_IMAGE" ; then # if no image given, find one
-    SING_IMAGE=$(ls -1 | egrep '\.simg$|\.sif$' | head -1)
-    if test -z "$SING_IMAGE" ; then
+  if test -z "$APPT_IMAGE" ; then # if no image given, find one
+    APPT_IMAGE=$(ls -1 | egrep '\.simg$|\.sif$' | head -1)
+    if test -z "$APPT_IMAGE" ; then
       echo "Error: can't find a .simg or .sif image in directory '$PREFIX'." 1>&2
       exit 2
     fi
@@ -193,15 +201,15 @@ if test -n "$PREFIX" ; then
 
   # Auto find overlays
   if test -z "$OVERLAYS" ; then
-    OVERLAYS=$(ls -1 | egrep '\.squashfs$|\.sqs$|\.ext3$')
+    OVERLAYS=$(ls -1 | egrep '\.squashfs$|\.sqs$|\.sqfs$|\.ext3$')
   fi
 
 fi
 
 # Validate image file
-if ! test -f "$SING_IMAGE" ; then
+if ! test -f "$APPT_IMAGE" ; then
   test -n "$PREFIX" && echo "Error: while switched to directory '$PREFIX':" 1>&2
-  echo "Error: '$SING_IMAGE' doesn't seem to be present and an image file." 1>&2
+  echo "Error: '$APPT_IMAGE' doesn't seem to be present and an image file." 1>&2
   echo "Maybe you need to provide the path with -I ?"                       1>&2
   exit 2
 fi
@@ -213,24 +221,24 @@ if test -z "$OVERLAYS" ; then
   exit 2
 fi
 
-# Generate singularity overlays options, expanding patterns at the same time.
+# Generate apptainer overlays options, expanding patterns at the same time.
 # Note that this is a place where errors can occur silently:
 # if the user provide bad patterns that do not match any files, the
 # pattern will be ignored.
-SING_OVERLAYS=$(ls -1 $OVERLAYS | sed -e 's/^/--overlay=/' -e 's/\.sqs$/.sqs:ro/' -e 's/\.squashfs/.squashfs:ro/')
+APPT_OVERLAYS=$(ls -1 $OVERLAYS | sed -e 's/^/--overlay=/' -e 's/\.sqs$/.sqs:ro/' -e 's/\.squashfs/.squashfs:ro/' -e 's/\.sqfs/.sqfs:ro/')
 
 # Figure out what program to run now;
 # if this script is provided with a command, we run that;
-# if this script is named "sing_sftpd", we run the OpenSSH sftp-server;
-# if this script is named "sing_rsync", we run the rsync command.
-# if this script is named "sing_shell", we start an interactive shell with no command.
+# if this script is named "apptainer_sftpd", we run the OpenSSH sftp-server;
+# if this script is named "apptainer_rsync", we run the rsync command.
+# if this script is named "apptainer_shell", we start an interactive shell with no command.
 COMMAND=""
 MODE="exec"
-if echo $BASENAME | grep sing_sftpd >/dev/null ; then
+if echo $BASENAME | grep apptainer_sftpd >/dev/null ; then
   COMMAND="$SFTPD_COMMAND"
-elif echo $BASENAME | grep sing_rsync >/dev/null ; then
+elif echo $BASENAME | grep apptainer_rsync >/dev/null ; then
   COMMAND="$RSYNC_COMMAND"
-elif echo $BASENAME | grep sing_shell >/dev/null ; then
+elif echo $BASENAME | grep apptainer_shell >/dev/null ; then
   MODE="shell"
 fi
 
@@ -264,14 +272,14 @@ if test $MODE = "exec" ; then
   # I use two 'exec's to simplify the process hierarchy!
   #
   # How glorious!
-  exec singularity -s exec \
-    $SING_OVERLAYS         \
-    $SING_IMAGE            \
+  exec apptainer -s exec \
+    $APPT_OVERLAYS         \
+    $APPT_IMAGE            \
     bash -c "exec $COMMAND $*"
 else # interactive shell
-  exec singularity -s shell \
-    $SING_OVERLAYS          \
-    $SING_IMAGE
+  exec apptainer -s shell \
+    $APPT_OVERLAYS          \
+    $APPT_IMAGE
 fi
 
 # If bash reaches this point, something is clearly wrong.

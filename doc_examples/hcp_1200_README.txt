@@ -27,19 +27,15 @@ files.
 
 3) But how do I access the files then?
 
-Using singularity. Version 3.2 or better is needed, and happens to be
-installed on Beluga (type "module load singularity/3.2").
-
-Using any container of your choice, you can 'mount' these files inside
-your container, and magically all the HCP dataset files will appear in
-your container's filesystem space. A simple CentOS container is provided
-here for you to experiment with (it's the file called sing_squashfs.simg).
-
-  # Make sure 3.2 is loaded; only needed once per login (consider putting this in your bashrc)
-  module load singularity/3.2
+With the containerization command 'apptainer'. Using Any Apptainer
+container of your choice, you can 'mount' these files inside your
+container, and magically all the HCP dataset files will appear in
+your container's filesystem space. A simple CentOS container is
+provided here for you to experiment with (it's the file called
+apptainer_squashfs.sif).
 
   # Enter a shell in the container with one of the SquashFS file mounted:
-  singularity shell --overlay hcp1200-00-100206-103414.squashfs sing_squashfs.simg
+  apptainer shell --overlay hcp1200-00-100206-103414.squashfs apptainer_squashfs.sif
 
   # Have a look at the 20 subjects, they will be under the path "/HCP_1200_data"
   ls -l /HCP_1200_data
@@ -49,42 +45,42 @@ here for you to experiment with (it's the file called sing_squashfs.simg).
 
 4) Can I access more subjects instead of just 20 at a time?
 
-Of course. Add more --overlay options to the singularity command. All subjects
+Of course. Add more --overlay options to the apptainer command. All subjects
 will appear under /HCP_1200_data.
 
 To get the first 40 subjects:
 
-  singularity shell \
+  apptainer shell \
     --overlay hcp1200-00-100206-103414.squashfs \
     --overlay hcp1200-01-103515-108020.squashfs \
-    sing_squashfs.simg
+    apptainer_squashfs.sif
 
 To get them all, using bash magic:
 
-  singularity shell $(ls -1 | grep 'hcp1200.*squashfs' | sed -e 's/^/--overlay /') sing_squashfs.simg
+  apptainer shell $(ls -1 | grep 'hcp1200.*squashfs' | sed -e 's/^/--overlay /') apptainer_squashfs.sif
 
 5) I see all these annoying WARNING messages...
 
-Use the '-s' option (silent) of singularity:
+Use the '-s' option (silent) of apptainer:
 
-  singularity -s shell --overlay ...
+  apptainer -s shell --overlay ...
 
 6) What if I want to run an analysis program on these files, instead
 of just browsing them with a shell?
 
-Either start your program from that shell, or use the singularity
-'exec' command instead. Also remember that you can use any singularity
+Either start your program from that shell, or use the apptainer
+'exec' command instead. Also remember that you can use any apptainer
 container, including the ones with your favorite programs in them.
 
   # To run the 'ls -l' command on a subject, without entering
   # the container interactively with a shell:
-  singularity exec --overlay hcp1200-00-100206-103414.squashfs sing_squashfs.simg /bin/ls -l /HCP_1200_data/100408
+  apptainer exec --overlay hcp1200-00-100206-103414.squashfs apptainer_squashfs.sif /bin/ls -l /HCP_1200_data/100408
 
 7) Isn't this all slower than just having the files directly on Beluga?
 
 Nope, it's the other way around. Once mounted, these SquashFS filesystems
 are much, much faster than having the plain files around. Within
-singularity, you can do a 'ls' of all 16 million files in about 3 minutes;
+apptainer, you can do a 'ls' of all 16 million files in about 3 minutes;
 the same test on Beluga would probably take hours.
 
 Also, as you can see, the entire dataset fits in a small number of files,
@@ -95,13 +91,13 @@ would simply not be possible to have the dataset as normal files anyway.
 
 8) Are there other ways to access the data files?
 
-Of course! The website https://github.com/aces/sing-squashfs-support
+Of course! The website https://github.com/aces/apptainer-squashfs-support
 contains hints and tips. Through the use of utility commands that
 happen to be installed here too, you can:
 
-   a) mount the files using sshfs (sing_sftpd_here)
-   b) rsync the content out of there (sing_rsync_here)
-   c) run a command in an easier way than described above (sing_command_here)
+   a) mount the files using sshfs (apptainer_sftpd_here)
+   b) rsync the content out of there (apptainer_rsync_here)
+   c) run a command in an easier way than described above (apptainer_command_here)
 
 Just don't rsync the entire dataset out, it's nonsensical and
 you don't have the room anyway!

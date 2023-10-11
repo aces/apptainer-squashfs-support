@@ -1,0 +1,16 @@
+
+Bootstrap: docker
+From: ubuntu:latest
+
+%post
+    apt-get update -y
+    apt-get install -y rsync openssh-server bzip2 squashfs-tools zip unzip
+    apt-get clean
+
+%labels
+    Author pierre.rioux@mcgill.ca
+    Version v2.0.0
+
+%help
+    This container provides a basic linux system with with rsync, squashfs tools, and sftp server (from openssh)
+

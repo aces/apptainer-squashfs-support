@@ -2,7 +2,7 @@
 # How to build a container image file suitable for accessing squashfs files
 
 Accessing SquashFS files as a non-privileged user is accomplished
-through a Singularity container. The image for that container doesn't
+through a Apptainer container. The image for that container doesn't
 need to include anything particular if one just wants to enter it
 interactively and work from within the container.
 
@@ -15,16 +15,16 @@ then it must include a few more system packages:
 * rsync :
   This package provides the rsync executable
 
-To build a singularity container image with both of these, we provide
-here a [singularity definition file](https://sylabs.io/guides/3.0/user-guide/definition_files.html)
-called `sing_squashfs.def`.
+To build an apptainer container image with both of these, we provide
+here a [apptainer definition file](https://apptainer.org/docs/user/main/definition_files.html)
+called `apptainer_squashfs.def`.
 
-This command (run as root) will build the container in the file `sing_squashfs.simg`.
+This command (run as root) will build the container in the file `apptainer_squashfs.sif`.
 
 ```shell
-singularity build sing_squashfs.simg sing_squashfs.def
+apptainer build apptainer_squashfs.sif apptainer_squashfs.def
 ```
 
-Note that singularity doesn't care all that much about the extension given
-to the image file, so you can also call it with `.img` or `.sif` instead of `.simg`.
+Note that apptainer doesn't care all that much about the extension given
+to the image file, so you can also call it with `.simg` or `.img` instead of `.sif`.
 

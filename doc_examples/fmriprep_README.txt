@@ -377,7 +377,7 @@ the other sections. For instance:
   # have to do a 'cd' as part of the rsync-path option:
   rsync -a -i --rsync-path="/project/rpp-aevans-ab/neurohub/ukbb/derivatives/fmriprep/apptainer_rsync_here -O 'fmriprep_000*'" $USER@localhost:/neurohub/ukbb/derivatives/fMRIPrep/sub-1010114/sub-1010114/ses-2/func/ ~/func
 
-  # Mounting a SSHFS directory like in section 5 above. Again,we no longer need a 'cd’:
+  # Mounting a SSHFS directory like in section 5 above. Again,we no longer need a 'cd':
   sshfs -o sftp_server="/project/rpp-aevans-ab/neurohub/ukbb/derivatives/fmriprep/apptainer_sftpd_here -O 'fmriprep_000*'" $USER@localhost:$allsubjects /tmp/fprep_000_$USER
 
 A whole lot of other options and architecture configurations are described

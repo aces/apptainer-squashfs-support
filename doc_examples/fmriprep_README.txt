@@ -321,9 +321,6 @@ They all take three options:
    -I apptainer_image_file
    -O squashfile_pattern
 
-Note: these options are optional, but when more than one is given, they
-must be given in that order.
-
 The -D option tells these commands which directory contains both the
 SquashFS files and the Apptainer image file. You can (optionally) specify
 the name of the Apptainer image file to use for the container (with -I),

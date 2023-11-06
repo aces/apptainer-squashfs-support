@@ -8,6 +8,9 @@
 # container engine, this current version use
 # 'apptainer' instead.
 #
+# November 2023:
+# The options -I, -O and -D can be given in any order now.
+#
 # See https://github.com/aces/apptainer-squashfs-support
 #
 # The site above gives examples on how to invoke this script as a wrapper for
@@ -30,7 +33,7 @@
 #  apptainer_rsync_here   # default sqfs and image: in install dir
 #  apptainer_shell_here   # default sqfs and image: in install dir
 
-VERSION="3.0"
+VERSION="3.1"
 BASENAME=$(basename $0)
 PREFIX="" # -D option
 
@@ -65,10 +68,10 @@ This is $BASENAME $VERSION by Pierre Rioux
 It will run a command in a apptainer container that has been started
 with a set of overlays. By default, depending on the name of this
 program, it will run the OpenSSH 'sftp-server', or the 'rsync' command.
+This program can also be used to start an interactive shell if it
+is named as 'apptainer_shell'.
 
 Usage: $BASENAME [-D directory] [-I apptainer_image_file] [-O overlay_file_pattern] [command...]
-
-Note: options must be provided in the order shown!
 
 where:
 
@@ -97,7 +100,7 @@ where:
     is a file pattern for a set of overlay image files
     (e.g. /path/to/something*.squashfs).
 
-  command
+  command args args...
 
     an optional command to run in the container. By default the command
     to run depends on the name of this very program:
@@ -108,7 +111,7 @@ where:
     When the program is named 'apptainer_rsync':
       The command will be '$RSYNC_COMMAND'.
 
-Installation shortcut:
+Installation shortcuts:
 
   If this program is installed in a directory and renamed with
   a '_here' at the end of the name, it will automatically internally
@@ -120,6 +123,16 @@ Installation shortcut:
   is the same as
 
      /path/to/apptainer_sftpd -D /path/to
+
+Debug mode:
+
+  If the first argument is '--debug', the program will not
+  attempt to launch any apptainer process; instead it will
+  provide a report about what the apptainer command itself
+  would look like. This is only useful when the current
+  mode of execution is to run a command or a shell. With
+  a sftp or rsync servers, these will crash, of course,
+  and you won't see the report itself.
 
 Examples:
 
@@ -137,6 +150,15 @@ Examples:
  # b) overlays will be all .squashfs, .sqs or .ext3 files
  apptainer_sftpd -D /my/path/for/everything
 
+ # Start a shell with a single squashfs file:
+ apptainer_shell -D /my/path/for/everything -O data.squashfs
+
+ # Debug the shell command above:
+ apptainer_shell --debug -D /my/path/for/everything -O data.squashfs
+
+ # Run a 'ls' command:
+ apptainer_command -D /my/path/for/everything ls -l /some/containerized/path
+
 USAGE
   exit 2
 }
@@ -144,7 +166,7 @@ USAGE
 ##########################################
 # When this program is renamed to end with
 # the string "_here", then it behaves as
-# if the option "-D $PWD" was given.
+# if the option "-D dir_of_script" was given.
 ##########################################
 if test "X${BASENAME/*_here/Y}" = "XY" ; then
   # Note that 'readlink -e' only exists on Linux
@@ -159,29 +181,66 @@ if test -z "$PREFIX" -a $# -lt 2 ; then
   usage
 fi
 
-# Optional PREFIX in -D
-if test "X$1" = "X-D" ; then
-  PREFIX="$2"
-  shift ; shift
-  if ! test -d "$PREFIX" ; then
-    echo "Error: '$PREFIX' for option -D is not a directory." 1>&2
-    exit 2
+if test "X$1" = "X-h" -o "X$1" = "X-help" -o "X$1" = "X--help" ; then
+  usage
+fi
+
+# Configure DEBUG mode (--debug)
+DEBUG=""
+if test "X$1" = "X--debug" ; then
+  echo "Debug mode enabled: the apptainer command will not be executed,"
+  echo "instead the command itself will be shown, as it would be executed."
+  shift
+  DEBUG="showargs"
+fi
+
+# This debug function 100% by your humble servant
+function showargs() {
+  echo ""
+  echo "-------------------------"
+  echo "Full command on one line:"
+  echo "-------------------------"
+  echo "$@"
+  echo ""
+  echo "-------------------------------"
+  echo "Command breakdown by arguments:"
+  echo "-------------------------------"
+  c=0
+  while test $# -gt 0 ; do
+    echo "[$c] = '$1'"
+    c=$(( $c + 1 ))
+    shift
+  done
+}
+
+# Main argument parsing loop. We just check for -D, -I or -O
+while test "X$1" = "X-D" -o "X$1" = "X-I" -o "X$1" = "X-O" ; do
+
+  # Optional PREFIX in -D
+  if test "X$1" = "X-D" ; then
+    PREFIX="$2"
+    shift ; shift
+    if ! test -d "$PREFIX" ; then
+      echo "Error: '$PREFIX' for option -D is not a directory." 1>&2
+      exit 2
+    fi
   fi
-fi
 
-# Option -I: the path of the apptainer image
-if test "X$1" = "X-I" ; then
-  test $# -lt 2 && usage
-  APPT_IMAGE="$2" # can be empty string if -D provided
-  shift ; shift
-fi
+  # Option -I: the path of the apptainer image
+  if test "X$1" = "X-I" ; then
+    test $# -lt 2 && usage
+    APPT_IMAGE="$2" # can be empty string if -D provided
+    shift ; shift
+  fi
 
-# Option -O: the path (or pattern) for one or several overlay images
-if test "X$1" = "X-O" ; then
-  test $# -lt 2 && usage
-  OVERLAYS="$2";  # can also be empty if -D provided
-  shift ; shift
-fi
+  # Option -O: the path (or pattern) for one or several overlay images
+  if test "X$1" = "X-O" ; then
+    test $# -lt 2 && usage
+    OVERLAYS="$2";  # can also be empty if -D provided
+    shift ; shift
+  fi
+
+done
 
 # Find image and overlays if necessary
 if test -n "$PREFIX" ; then
@@ -272,12 +331,12 @@ if test $MODE = "exec" ; then
   # I use two 'exec's to simplify the process hierarchy!
   #
   # How glorious!
-  exec apptainer -s exec \
+  $DEBUG exec apptainer -s exec \
     $APPT_OVERLAYS         \
     $APPT_IMAGE            \
     bash -c "exec $COMMAND $*"
 else # interactive shell
-  exec apptainer -s shell \
+  $DEBUG exec apptainer -s shell \
     $APPT_OVERLAYS          \
     $APPT_IMAGE
 fi
